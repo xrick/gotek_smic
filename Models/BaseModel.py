@@ -4,8 +4,8 @@ import abc
 
 class BaseModel(object):
     __metaclass__ = abc.ABCMeta
-    def __init__(self,optimizer='gradientdescent',loss='crossentropy',model_settings=None,
-                 train=True,num_hidden=100,num_layers=1):
+    def __init__(self,optimizer='gradientdescent', loss='crossentropy', model_settings=None,
+                 train=True, num_hidden=100,num_layers=1):
         self.loss = loss
         self.model_settings = model_settings
         self.train = train
@@ -16,6 +16,9 @@ class BaseModel(object):
 
     @abc.abstractmethod
     def get_in_ground_truth(self):
+        pass
+    @abc.abstractmethod
+    def save_weights(self):
         pass
 
     @abc.abstractmethod

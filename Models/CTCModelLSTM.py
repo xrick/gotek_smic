@@ -19,11 +19,13 @@ class CTCModelLSTM(BaseModel):
         seq_len = tf.placeholder(tf.int32, [None], name='seq_len')
         return fingerprint_input, ground_truth_input, seq_len
 
+    # def save_weights(self):
+    #     raise Exception("save_weights method is not implemented in {} class".format("CTCModelLSTM"))
+
     def get_logits_dropout(self, fingerprint_input, seq_len):
         num_classes = ord('z') - ord('a') + 1 + 1 + 1
         cells = [tf.contrib.rnn.LSTMCell(self.num_hidden, state_is_tuple=True) for i in range(self.num_layers)]
-        stack = tf.contrib.rnn.MultiRNNCell(cells,
-                                            state_is_tuple=True)
+        stack = tf.contrib.rnn.MultiRNNCell(cells,state_is_tuple=True)
         outputs, _ = tf.nn.dynamic_rnn(stack, fingerprint_input, seq_len, dtype=tf.float32)
         shape = tf.shape(fingerprint_input)
         batch_s, max_time_steps = shape[0], shape[1]

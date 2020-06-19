@@ -13,6 +13,9 @@ class SanityModel(BaseModel):
         ground_truth_input = tf.placeholder(tf.int64, [None], name='ground_truth_input')
         return fingerprint_input, ground_truth_input, None
 
+    def save_weights(self):
+        raise Exception("save_weights method is not implemented in {} class".format("SanityModel"))
+
     def get_logits_dropout(self, fingerprint_input, seq_len):
         if self.train:
             dropout_prob = tf.placeholder(tf.float32, name='dropout_prob')

@@ -10,6 +10,8 @@ class DNN128(BaseModel):
         self.n_h1 = 128
         self.n_h2 = 128
         self.n_h3 = 128
+        self.weights = None
+        self.biases = None#self.get_init_weights(lable_len)
 
     def get_in_ground_truth(self):
         # X
@@ -39,16 +41,16 @@ class DNN128(BaseModel):
         # fingerprint_size = self.model_settings['fingerprint_size']
         label_count = self.model_settings['label_count']
         # weights = tf.Variable(tf.truncated_normal([fingerprint_size, label_count], stddev=0.001))
-        weights, biases = self.get_init_weights(label_count)
+        self.weights, self.biases = self.get_init_weights(label_count)
         # bias = tf.Variable(tf.zeros([label_count]))
         # logits = tf.matmul(fingerprint_input, weights) + bias
-        layer_1 = tf.add(tf.matmul(fingerprint_input, weights['h1']), biases['h1'])
+        layer_1 = tf.add(tf.matmul(fingerprint_input, self.weights['h1']), self.biases['h1'])
         # Hidden fully connected layer with 128 neurons
-        layer_2 = tf.add(tf.matmul(layer_1, weights['h2']), biases['h2'])
+        layer_2 = tf.add(tf.matmul(layer_1, self.weights['h2']), self.biases['h2'])
         # Hidden fully connected layer with 128 neurons
-        layer_3 = tf.add(tf.matmul(layer_2, weights['h3']), biases['h3'])
+        layer_3 = tf.add(tf.matmul(layer_2, self.weights['h3']), self.biases['h3'])
         # Output fully connected layer with a neuron for each class
-        logits = tf.matmul(layer_3, weights['output']) + biases['output']
+        logits = tf.matmul(layer_3, self.weights['output']) + self.biases['output']
         if self.train:
             return logits, dropout_prob
         else:
@@ -59,7 +61,18 @@ class DNN128(BaseModel):
         correct_prediction = tf.equal(predicted_indices, ground_truth_input)
         confusion_matrix = tf.confusion_matrix(ground_truth_input, predicted_indices,
                                                         num_classes=self.model_settings['label_count'])
-        return predicted_indices,correct_prediction,confusion_matrix
+        return predicted_indices, correct_prediction, confusion_matrix
 
-    def save_weights(self):
-        pass
+    # def save_weights(self, sess, weights_path):
+    #     weight1 = self.weights['h1'].eval(sess)
+    #     weight2 = self.weights['h2'].eval(sess)
+    #     weight3 = self.weights['h3'].eval(sess)
+    #     weight4 = self.weights['output'].eval(sess)
+    #     bias1 = self.biases['h1'].eval(sess)
+    #     bias2 = self.biases['h2'].eval(sess)
+    #     bias3 = self.biases['h3'].eval(sess)
+    #     bias4 = self.biases['output'].eval(sess)
+    #     CurrentDateString = "{}_{}".format(str(date.today()).replace("-", ""),datetime.now().strftime("%H_%M_%S"))
+    #     spio.savemat(weights_path.format(self.n_h1, self.n_h2, self.n_h3, CurrentDateString),
+    #                  {'w1': weight1, 'w2': weight2, 'w3': weight3, 'w4': weight4, 'b1': bias1,
+    #                   'b2': bias2, 'b3': bias3, 'b4': bias4})
