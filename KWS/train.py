@@ -52,11 +52,14 @@ def main(_):
     total_conf_matrix, total_accuracy, set_size = estimator.train()
     print('Confusion Matrix:\n %s' % (total_conf_matrix))
     print('Final test accuracy = %.1f%% (N=%d)' % (total_accuracy, set_size))
-    df = estimator.predict(Config.predict_path)
-    df.to_csv( 'sub.csv', index=False)
-    df = estimator.predict(Config.predict_path)
-    df.to_csv( 'sub.csv', index=False)
+    if estimator.model_name == "dnn128":
+        wpath_ = "./data/kws_weights/kw_{}_{}.mat"
+        estimator.save_weights(wpath_)
+    # df = estimator.predict(Config.predict_path)
+    # df.to_csv( 'sub.csv', index=False)
+    # df = estimator.predict(Config.predict_path)
+    # df.to_csv( 'sub.csv', index=False)
 
 if __name__ == '__main__':
-    Config = ConfigParser('example_config/baseline.yml')
+    Config = ConfigParser('example_config/dnn128.yml')
     tf.app.run(main=main)

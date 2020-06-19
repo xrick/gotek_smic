@@ -311,7 +311,7 @@ class AudioReader:
         return data, labels, f_names
 
     def get_data_random(self, how_many, offset, background_frequency,
-                        background_volume_range, time_shift, mode, sess,features_2d=False):
+                        background_volume_range, time_shift, mode, sess, features_2d=False):
         """
             Args:
           how_many: Desired number of samples to return. -1 means the entire

@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import os
 from tensorflow.python.framework import ops
-
+import scipy.io as spio
+from datetime import date
+from datetime import datetime
 
 class Estimator:
     def __init__(self, model_name='baseline', model=None,
@@ -79,7 +81,7 @@ class Estimator:
         print(
             'Total Number of steps {} and eval every {} steps'.format(self.training_steps_max, self.eval_every_n_steps))
         print(
-            'Total Number of Audio wavs {}'.format(self.audio_processor.set_size('training') ))
+            'Total Number of Audio wavs {}'.format(self.audio_processor.set_size('training')))
         self.fingerprint_input,self.ground_truth_input,self.seq_len = model.get_in_ground_truth()
         self.logits, self.dropout_prob = model.get_logits_dropout(self.fingerprint_input,self.seq_len)
         with tf.name_scope('Loss'):
@@ -88,7 +90,8 @@ class Estimator:
         with tf.name_scope('train'):
             self.learning_rate_input = tf.placeholder(tf.float32, [], name='learning_rate_input')
             self.train_step = model.get_optimizer(self.learning_rate_input, self.loss_mean)
-        self.predicted_indices, self.correct_prediction, self.confusion_matrix = model.get_confusion_matrix_correct_labels(self.ground_truth_input,self.logits,self.seq_len,self.audio_processor)
+        self.predicted_indices, self.correct_prediction,self.confusion_matrix = model.get_confusion_matrix_correct_labels(self.ground_truth_input,self.logits,
+                                                                          self.seq_len,self.audio_processor)
         self.evaluation_step = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
         tf.summary.scalar('accuracy', self.evaluation_step)
         self.global_step = tf.train.get_or_create_global_step()
@@ -103,6 +106,20 @@ class Estimator:
         tf.logging.info('Training from step: %d ', self.start_step)
         tf.train.write_graph(self.sess.graph_def, self.model_path, model_name + '.pbtxt')
         self.model  = model
+
+    def save_weights(self, weights_file_path):
+        weight1 = self.model.weights['h1'].eval(self.sess)
+        weight2 = self.model.weights['h2'].eval(self.sess)
+        weight3 = self.model.weights['h3'].eval(self.sess)
+        weight4 = self.model.weights['output'].eval(self.sess)
+        bias1 = self.model.biases['h1'].eval(self.sess)
+        bias2 = self.model.biases['h2'].eval(self.sess)
+        bias3 = self.model.biases['h3'].eval(self.sess)
+        bias4 = self.model.biases['output'].eval(self.sess)
+        CurrentDateString = "{}_{}".format(str(date.today()).replace("-", ""), datetime.now().strftime("%H_%M_%S"))
+        spio.savemat(weights_file_path.format("dnn128", CurrentDateString),
+                     {'w1': weight1, 'w2': weight2, 'w3': weight3, 'w4': weight4, 'b1': bias1,
+                      'b2': bias2, 'b3': bias3, 'b4': bias4})
 
     def load(self, checkpoint_path):
         self.saver.restore(self.sess, checkpoint_path)

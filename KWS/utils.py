@@ -115,9 +115,14 @@ def model_factory_to_object(model_name):
     return model_
 
 
-def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
-                           window_size_ms, window_stride_ms,
-                           dct_coefficient_count,time_shift_ms,max_num_wavs_per_class):
+def prepare_model_settings(label_count,
+                           sample_rate,
+                           clip_duration_ms,
+                           window_size_ms,
+                           window_stride_ms,
+                           dct_coefficient_count,
+                           time_shift_ms,
+                           max_num_wavs_per_class):
     """Calculates common settings needed for all models.
       Args:
         label_count: How many classes are to be recognized.
@@ -129,24 +134,25 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
       Returns:
         Dictionary containing common settings.
       """
-    CurrentDateString = "{}_{}".format(str(date.today()).replace("-", ""), datetime.now().strftime("%H_%M_%S"))
-    open("./paras_log/")
-    print("prepare_model_settings is called")
+    # CurrentDateString = "{}_{}".format(str(date.today()).replace("-", ""), datetime.now().strftime("%H_%M_%S"))
+    # logf = open("./paras_log/model_setting_{}.log".format(CurrentDateString))
     desired_samples = int(sample_rate * clip_duration_ms / 1000)
     window_size_samples = int(sample_rate * window_size_ms / 1000)
     window_stride_samples = int(sample_rate * window_stride_ms / 1000)
-    length_minus_window = (desired_samples - window_size_samples)
-    time_shift_samples = int((time_shift_ms * sample_rate) / 1000)
-    print("desired_samples is ", desired_samples)
-    print("window_size_samples is ", window_size_samples)
-    print("window stride samples is ", window_stride_samples)
+    length_minus_window = (desired_samples - window_size_samples) # example: 160000-400
+    time_shift_samples = int((time_shift_ms * sample_rate) / 1000) # here is 1600
+    print("model setting (utils.py, line 138)")
+    print("desired_samples(points per second) is ", desired_samples)
+    print("window_size_samples(points per window) is ", window_size_samples)
+    print("window stride samples(points per hop_length) is ", window_stride_samples)
     print("length_minus_window is ", length_minus_window)
     print("time_shift_samples is ", time_shift_samples)
     if length_minus_window < 0:
         spectrogram_length = 0
     else:
-        spectrogram_length = 1 + int(length_minus_window / window_stride_samples)
-    fingerprint_size = dct_coefficient_count * spectrogram_length
+        spectrogram_length = 1 + int(length_minus_window / window_stride_samples) #here is framming
+        print("spectrogram length(total frames) is ", length_minus_window)
+    fingerprint_size = dct_coefficient_count * spectrogram_length # total elements for one wav
     # debug
     print("dct_coefficient_count is ", dct_coefficient_count)
     print("spectrogram_length is ", spectrogram_length)
