@@ -24,6 +24,9 @@ filler_path = "path to filler"
 silence_path = "path to silence train data"
 x_class1 = []
 y_class1 = []
+keyword_label = 2
+filler_label = 1
+silence_label = 0
 
 def resample_by_interpolation(signal, input_fs, output_fs):
 
@@ -88,10 +91,12 @@ def vad_test(s, fs):
     return rest_s
 
 def get_mel_fb(SR=16000, num_fft=1204, num_mels=13, F_Min=133, F_Max=933):
+    mel_fb = librosa.filters.mel(sr=SR, n_fft=num_fft, n_mels=num_mels, fmin=F_Min, fmax=F_Max, norm=None)
+    return mel_fb
 
 
 def get_mfcc_librosa(wav_sig=None, sample_rate=16000, frame_length=400, step_length=160,
-                     num_mels=40, num_mfccs=40, mel_fb=None, dct_type=2, window='hamming'):
+                     num_mels=13, num_mfccs=40, mel_fb=None, dct_type=2, window='hamming'):
     tmp_melspec = librosa.feature.melspectrogram(y=wav_sig, sr=sample_rate,
                                                  S=mel_fb,
                                                  n_mels=num_mels,
@@ -101,32 +106,53 @@ def get_mfcc_librosa(wav_sig=None, sample_rate=16000, frame_length=400, step_len
                                                  window=window)
 
     tmp_melspec = librosa.power_to_db(tmp_melspec)
-    _mfcc = librosa.feature.mfcc(S=tmp_melspec, dct_type=2, n_mfcc=num_mfccs, norm=None, lifter=0)
+    _mfcc = librosa.feature.mfcc(S=tmp_melspec, dct_type=dct_type, n_mfcc=num_mfccs, norm=None, lifter=0)
     return _mfcc
+
+def gen_train_data(sig_, sr_, label):
+    removed_sig = vad_test(sig_, 16000)
+    len_of_sig_ = len(removed_sig)
+    if len_of_sig_ > 8000:
+        removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_, :]
+    elif len_of_sig_ < 8000:
+        removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ^ -6, removed_sig)
+    melfb = get_mel_fb()
+    coeff = get_mfcc_librosa(wav_sig=removed_sig, mel_fb=melfb, window=None)
+    temp = coeff[0,:]-np.amin(coeff[1,:])
+    coeff[0, :] = temp / np.amax(temp)
+    nframe = len(coeff[0, :])
+    #[zeros(nDims, context_l), coeff, zeros(nDims, context_r)];
+    coeff = np.hstack(np.zeros(nDims, context_l),coeff)
+    coeff = np.hstack(coeff, np.zeros(nDims, context_r))
+    x = []
+    y = []
+    for context in range(nframe):
+        xx = []
+        window = coeff[:, context:(context+context_l+context_r)]
+        wLoop = context_l+context_r+1
+        for w in range(wLoop):
+            xx = np.hstack(xx, window[:, w])
+    x = np.hstack(x, xx)
+    y = np.hstack(y, label)
+    return x, y
 
 def main_entry():
     keyword_files = get_recursive_files(keyword_path)
     filler_files = get_recursive_files(filler_path)
     silence_files = get_recursive_files(silence_path)
+    x_all_data = np.empty((0, 120), np.float)
+    y_all_data = np.empty((0, 120), np.float)
     for k in keyword_files:
-        sig_, sr_ = wavio.read(k)
-        if sr_ != 16000:
-            sig_ = resample_by_interpolation(sig_, sr_, 16000)
-        removed_sig = vad_test(sig_, 16000)
-        len_of_sig_ = len(removed_sig)
-        if len_of_sig_ > 8000:
-            removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_, :]
-        elif len_of_sig_ < 8000:
-            removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ^ -6, removed_sig)
+        sig, sr = wavio.read(k)
+        tmp_x = None
+        tmp_y = None
+        if sr != 16000:
+            sig = resample_by_interpolation(sig, sr, 16000)
+            sr = 16000
+        tmp_x, tmp_y = gen_train_data(sig, sr, keyword_label)
+        x_all_data = np.vstack(x_all_data, tmp_x)
+        y_all_data = np.vstack(y_all_data, tmp_y)
 
-        coeff = get_mfcc_librosa(wav_sig=removed_sig, window=None)
-        temp = coeff(1,:)-min(coeff(1,:));
-        coeff(1,:) = temp. / max(temp);
-        nframe = length(coeff(1,:));
-        coeff = [zeros(nDims, context_l), coeff, zeros(nDims, context_r)];
-
-        x = [];
-        y = [];
 
 
 
