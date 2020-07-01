@@ -9,8 +9,9 @@ sys.path.append(os.path.abspath(script_path))
 sys.path.append(os.path.abspath(script_path2))
 from scipy import signal
 from numpy.linalg import norm
-from utils import get_recursive_files
+from Libs.utils import get_recursive_files
 import librosa
+from tqdm import tqdm
 # import yaml
 
 fs = 16000
@@ -19,7 +20,7 @@ windowStep = fs * 0.010
 nDims = 40
 context_l = 30
 context_r = 10
-keyword_path = "path to keyword"
+keyword_path = "../speech_datasets/whole_keyword_clean_second_run_1430/"
 filler_path = "path to filler"
 silence_path = "path to silence train data"
 x_class1 = []
@@ -90,13 +91,14 @@ def vad_test(s, fs):
             # rest_s = np.insert(rest_s, new_s[j])
     return rest_s
 
-def get_mel_fb(SR=16000, num_fft=1204, num_mels=13, F_Min=133, F_Max=933):
+def get_mel_fb(SR=16000, num_fft=1024, num_mels=40, F_Min=133, F_Max=1200):
     mel_fb = librosa.filters.mel(sr=SR, n_fft=num_fft, n_mels=num_mels, fmin=F_Min, fmax=F_Max, norm=None)
-    return mel_fb
+    ret_fb = mel_fb.T
+    return ret_fb
 
 
 def get_mfcc_librosa(wav_sig=None, sample_rate=16000, frame_length=400, step_length=160,
-                     num_mels=13, num_mfccs=40, mel_fb=None, dct_type=2, window='hamming'):
+                     num_mels=40, num_mfccs=40, mel_fb=None, dct_type=2, window='hamming'):
     tmp_melspec = librosa.feature.melspectrogram(y=wav_sig, sr=sample_rate,
                                                  S=mel_fb,
                                                  n_mels=num_mels,
@@ -109,54 +111,60 @@ def get_mfcc_librosa(wav_sig=None, sample_rate=16000, frame_length=400, step_len
     _mfcc = librosa.feature.mfcc(S=tmp_melspec, dct_type=dct_type, n_mfcc=num_mfccs, norm=None, lifter=0)
     return _mfcc
 
+def get_librosa_defult_mfcc(wav_sig=None, sample_rate=16000, frame_length=400, step_length=160,
+                            num_mels=40, num_mfccs=40):
+    mfcc_ = librosa.feature.mfcc(y=wav_sig, sr=16000, n_mfcc=40, n_mels=40,
+                                 win_length=frame_length, hop_length=step_length)
+    return mfcc_
+
 def gen_train_data(sig_, sr_, label):
     removed_sig = vad_test(sig_, 16000)
     len_of_sig_ = len(removed_sig)
     if len_of_sig_ > 8000:
-        removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_, :]
+        removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_]
     elif len_of_sig_ < 8000:
         removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ^ -6, removed_sig)
     melfb = get_mel_fb()
     coeff = get_mfcc_librosa(wav_sig=removed_sig, mel_fb=melfb, window=None)
-    temp = coeff[0,:]-np.amin(coeff[1,:])
+    # coeff = get_librosa_defult_mfcc(wav_sig=removed_sig)
+    temp = coeff[0,:]-np.amin(coeff[0,:])
     coeff[0, :] = temp / np.amax(temp)
     nframe = len(coeff[0, :])
     #[zeros(nDims, context_l), coeff, zeros(nDims, context_r)];
-    coeff = np.hstack(np.zeros(nDims, context_l),coeff)
-    coeff = np.hstack(coeff, np.zeros(nDims, context_r))
-    x = []
-    y = []
+    coeff = np.hstack((np.zeros((nDims, context_l)), coeff))
+    coeff = np.hstack((coeff, np.zeros((nDims, context_r))))
+    x = np.zeros((nDims,0))
+    y = np.zeros(0)
     for context in range(nframe):
-        xx = []
+        xx = np.zeros((0,40))
         window = coeff[:, context:(context+context_l+context_r)]
-        wLoop = context_l+context_r+1
+        wLoop = context_l+context_r
         for w in range(wLoop):
-            xx = np.hstack(xx, window[:, w])
-    x = np.hstack(x, xx)
-    y = np.hstack(y, label)
+            be_stacked_win = window[:, w]
+            xx = np.vstack((xx, window[:, w]))
+        # xx = xx[1:]
+        x = np.hstack((x, xx))
+        y = np.hstack((y, label))
+
     return x, y
 
 def main_entry():
     keyword_files = get_recursive_files(keyword_path)
-    filler_files = get_recursive_files(filler_path)
-    silence_files = get_recursive_files(silence_path)
-    x_all_data = np.empty((0, 120), np.float)
-    y_all_data = np.empty((0, 120), np.float)
+    # filler_files = get_recursive_files(filler_path)
+    # silence_files = get_recursive_files(silence_path)
+    x_all_data = np.empty((0, 1600), np.float)
+    y_all_data = np.empty((0, 40), np.float)
     for k in keyword_files:
-        sig, sr = wavio.read(k)
+        sr, sig = wavio.read(k)
         tmp_x = None
         tmp_y = None
         if sr != 16000:
             sig = resample_by_interpolation(sig, sr, 16000)
             sr = 16000
         tmp_x, tmp_y = gen_train_data(sig, sr, keyword_label)
-        x_all_data = np.vstack(x_all_data, tmp_x)
-        y_all_data = np.vstack(y_all_data, tmp_y)
-
-
-
-
-
+        x_all_data = np.vstack((x_all_data, tmp_x))
+        y_all_data = np.vstack((y_all_data, tmp_y))
+    print("processing finished!")
 
 if __name__ == "__main__":
     main_entry()
