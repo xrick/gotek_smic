@@ -123,7 +123,7 @@ def gen_train_data(sig_, sr_, label):
     if len_of_sig_ > 8000:
         removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_]
     elif len_of_sig_ < 8000:
-        removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ^ -6, removed_sig)
+        removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ** -6, removed_sig)
     melfb = get_mel_fb()
     coeff = get_mfcc_librosa(wav_sig=removed_sig, mel_fb=melfb, window=None)
     # coeff = get_librosa_defult_mfcc(wav_sig=removed_sig)
