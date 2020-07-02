@@ -140,7 +140,7 @@ def gen_train_data(sig_, sr_, label):
         window = coeff[:, context:(context+context_l+context_r)]
         wLoop = context_l+context_r
         for w in range(wLoop):
-            be_stacked_win = window[:, w]
+            #be_stacked_win = window[:, w]
             xx = np.vstack((xx, window[:, w]))
         # xx = xx[1:]
         x = np.hstack((x, xx))
