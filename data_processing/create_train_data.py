@@ -12,6 +12,7 @@ from numpy.linalg import norm
 from Libs.utils import get_recursive_files
 import librosa
 from tqdm import tqdm
+import timeit
 # import yaml
 
 fs = 16000
@@ -20,9 +21,9 @@ windowStep = fs * 0.010
 nDims = 40
 context_l = 30
 context_r = 10
-keyword_path = "../speech_datasets/whole_keyword_clean_second_run_1430/"
-filler_path = "path to filler"
-silence_path = "path to silence train data"
+keyword_path = "../speech_datasets/small_kws_dataset_for_train/keyword_p1/"
+filler_path = "../speech_datasets/small_kws_dataset_for_train/speech_commands_for_train/bird/"
+silence_path = "../speech_datasets/small_kws_dataset_for_train/background_noise/"
 x_class1 = []
 y_class1 = []
 keyword_label = 2
@@ -123,7 +124,8 @@ def gen_train_data(sig_, sr_, label):
     if len_of_sig_ > 8000:
         removed_sig = removed_sig[(len_of_sig_ - 8000):len_of_sig_]
     elif len_of_sig_ < 8000:
-        removed_sig = np.hstack(0.5 + np.random.rand(8000 - len_of_sig_, 1) * 10 ** -6, removed_sig)
+        pad_array = 0.5 + np.random.rand(8000 - len_of_sig_) * 10 ** -6
+        removed_sig = np.hstack((pad_array, removed_sig))
     melfb = get_mel_fb()
     coeff = get_mfcc_librosa(wav_sig=removed_sig, mel_fb=melfb, window=None)
     # coeff = get_librosa_defult_mfcc(wav_sig=removed_sig)
@@ -140,7 +142,7 @@ def gen_train_data(sig_, sr_, label):
         window = coeff[:, context:(context+context_l+context_r)]
         wLoop = context_l+context_r
         for w in range(wLoop):
-            #be_stacked_win = window[:, w]
+            be_stacked_win = window[:, w]
             xx = np.vstack((xx, window[:, w]))
         # xx = xx[1:]
         x = np.hstack((x, xx))
@@ -154,7 +156,7 @@ def main_entry():
     # silence_files = get_recursive_files(silence_path)
     x_all_data = np.empty((0, 1600), np.float)
     y_all_data = np.empty((0, 40), np.float)
-    for k in keyword_files:
+    for k in tqdm(keyword_files):
         sr, sig = wavio.read(k)
         tmp_x = None
         tmp_y = None
@@ -164,6 +166,13 @@ def main_entry():
         tmp_x, tmp_y = gen_train_data(sig, sr, keyword_label)
         x_all_data = np.vstack((x_all_data, tmp_x))
         y_all_data = np.vstack((y_all_data, tmp_y))
+
+    y_all_data = y_all_data.flatten()
+    x_mat_dict = {"xtrain":x_all_data}
+    y_mat_dict = {"ytrain":y_all_data}
+
+    spio.savemat("../KWS_ProtoType/MyTrainData/kws_train_data_20200702.mat", x_mat_dict, oned_as="column")
+    spio.savemat("../KWS_ProtoType/MyTrainData/kws_train_lbl_20200702.mat", y_mat_dict, oned_as="row")
     print("processing finished!")
 
 if __name__ == "__main__":
