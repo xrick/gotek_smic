@@ -4,12 +4,11 @@ import scipy.io as spio
 import os
 import sys
 script_path = "../"
-script_path2 = "../Libs/"
+# script_path2 = "../Libs/"
 sys.path.append(os.path.abspath(script_path))
-sys.path.append(os.path.abspath(script_path2))
 from scipy import signal
 from numpy.linalg import norm
-from Libs.utils import get_recursive_files
+from utils import get_recursive_files
 import librosa
 from tqdm import tqdm
 import timeit
@@ -21,9 +20,10 @@ windowStep = fs * 0.010
 nDims = 40
 context_l = 30
 context_r = 10
-keyword_path = "../speech_datasets/small_kws_dataset_for_train/keyword_p1/"
-filler_path = "../speech_datasets/small_kws_dataset_for_train/speech_commands_for_train/bird/"
-silence_path = "../speech_datasets/small_kws_dataset_for_train/background_noise/"
+keyword_path = "../speech_dataset/small_kws_dataset_for_train/keyword_part1/"
+test_path = "../speech_dataset/test/"
+# filler_path = "../speech_datasets/small_kws_dataset_for_train/speech_commands_for_train/bird/"
+# silence_path = "../speech_datasets/small_kws_dataset_for_train/background_noise/"
 x_class1 = []
 y_class1 = []
 keyword_label = 2
@@ -152,6 +152,7 @@ def gen_train_data(sig_, sr_, label):
 
 def main_entry():
     keyword_files = get_recursive_files(keyword_path)
+    test_files = get_recursive_files(test_path)
     # filler_files = get_recursive_files(filler_path)
     # silence_files = get_recursive_files(silence_path)
     x_all_data = np.empty((0, 1600), np.float)
@@ -171,9 +172,30 @@ def main_entry():
     x_mat_dict = {"xtrain":x_all_data}
     y_mat_dict = {"ytrain":y_all_data}
 
-    spio.savemat("../KWS_ProtoType/MyTrainData/kws_train_data_20200702.mat", x_mat_dict, oned_as="column")
-    spio.savemat("../KWS_ProtoType/MyTrainData/kws_train_lbl_20200702.mat", y_mat_dict, oned_as="row")
-    print("processing finished!")
+    spio.savemat("../MyTrainData/kws_train_data_20200703.mat", x_mat_dict, oned_as="column")
+    spio.savemat("../MyTrainData/kws_train_lbl_20200703.mat", y_mat_dict, oned_as="row")
+    print("Training Data Processing Finished!")
+
+    x_all_data_test = np.empty((0, 1600), np.float)
+    y_all_data_test = np.empty((0, 40), np.float)
+    for t in tqdm(test_files):
+        sr, sig = wavio.read(t)
+        tmp_x = None
+        tmp_y = None
+        if sr != 16000:
+            sig = resample_by_interpolation(sig, sr, 16000)
+            sr = 16000
+        tmp_x, tmp_y = gen_train_data(sig, sr, keyword_label)
+        x_all_data_test = np.vstack((x_all_data_test, tmp_x))
+        y_all_data_test = np.vstack((y_all_data_test, tmp_y))
+
+    y_all_data_test = y_all_data_test.flatten()
+    x_mat_dict_test = {"xtrain": x_all_data_test}
+    y_mat_dict_test = {"ytrain": y_all_data_test}
+
+    spio.savemat("../MyTrainData/kws_test_data_20200703.mat", x_mat_dict_test, oned_as="column")
+    spio.savemat("../MyTrainData/kws_test_lbl_20200703.mat", y_mat_dict_test, oned_as="row")
+    print("Testing Data Processing Finished!")
 
 if __name__ == "__main__":
     main_entry()
