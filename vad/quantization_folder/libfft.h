@@ -1,0 +1,1 @@
+void get_footprint(int* wavdata, int size, float* output );
